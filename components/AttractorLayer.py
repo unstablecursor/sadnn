@@ -17,6 +17,7 @@ class AttractorLayer:
         self.n_x = n_x  # X length of the grid points
         self.n_y = n_y  # Y length of the grid points
         self.neuron_activities = np.zeros(self.n_x * self.n_y)
+        self.new_neuron_activities = np.zeros(self.n_x * self.n_y)
         self.inter_neuron_connections = np.zeros(
             (self.n_x * self.n_y, self.n_x * self.n_y)
         )
@@ -44,9 +45,10 @@ class AttractorLayer:
         :param i: Neuron index
         """
         # TODO : Incomplete, also need to include the neuron itself.
-        self.neuron_activities[i] = self.transfer_function(i) * (
+        tf_result = self.transfer_function(i)
+        self.new_neuron_activities[i] = tf_result * (
             1 - TAU
-        ) + TAU * self.transfer_function(i) / np.sum(self.neuron_activities)
+        ) + TAU * tf_result / np.sum(self.neuron_activities)
 
     def get_distance_bw_neurons(self, i, j):
         """

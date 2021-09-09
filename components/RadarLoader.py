@@ -118,17 +118,63 @@ class RadarLoader:
     def display_range_angle_stream(self, frame_name):
 
         print("Raw Range-Doppler representation stream:")
+        for i in range(100, 999):
+            ra_path = os.path.join(
+                self.seq_path, "range_angle_numpy", "000" + str(i) + ".npy"
+            )
+            ra_path_2 = os.path.join(
+                self.seq_path, "range_angle_numpy", "000" + str(i + 1) + ".npy"
+            )
+            ra_matrix = np.load(ra_path)
+            ra_matrix_2 = np.load(ra_path_2)
+            diff_ra_matrix = ra_matrix_2 - ra_matrix
+            # Range-Doppler visualization
+            signal_visualizer = SignalVisualizer(diff_ra_matrix)
+            # print(signal_visualizer.image)
+            resized = cv2.resize(signal_visualizer.image, (64, 64))
+            cv2.imshow("image", resized)
+            cv2.waitKey(500)
+
+    def get_range_angle_stream_data(self):
+        data = []
         for i in range(100, 1000):
             ra_path = os.path.join(
                 self.seq_path, "range_angle_numpy", "000" + str(i) + ".npy"
             )
             ra_matrix = np.load(ra_path)
             # Range-Doppler visualization
-            signal_visualizer = SignalVisualizer(ra_matrix)
-            # print(signal_visualizer.image)
+            data.append(ra_matrix)
+        return data
 
-            cv2.imshow("image", signal_visualizer.image)
-            cv2.waitKey(500)
+    def get_range_angle_stream_data(self):
+        data = []
+        for i in range(100, 1000):
+            ra_path = os.path.join(
+                self.seq_path, "range_angle_numpy", "000" + str(i) + ".npy"
+            )
+            ra_matrix = np.load(ra_path)
+            # Range-Doppler visualization
+            data.append(ra_matrix)
+        return data
+
+    def visualize_matrix(self, matrix, selection=0):
+        """
+        Visualize matrix in notebook
+        :param matrix:
+        :param selection: 0 for angle, 1 for doppler
+        :return:
+        """
+
+        ra_matrix, rd_matrix, annotations = self.load_data_from_frame(frame_name)
+        fig, ax = plt.subplots()
+        if selection == 0:
+            cell_dists_map = ax.imshow(ra_matrix)
+            fig.colorbar(ra_matrix)
+        elif selection == 1:
+            fig, ax = plt.subplots()
+            cell_dists_map = ax.imshow(rd_matrix)
+            fig.colorbar(rd_matrix)
+        plt.show()
 
 
 seq_name = "2020-02-28-13-13-43"
