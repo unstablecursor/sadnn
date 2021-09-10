@@ -137,27 +137,23 @@ class RadarLoader:
 
     def get_range_angle_stream_data(self):
         data = []
-        for i in range(100, 1000):
-            ra_path = os.path.join(
-                self.seq_path, "range_angle_numpy", "000" + str(i) + ".npy"
-            )
+        file_list = os.listdir(os.path.join(self.seq_path, "range_angle_numpy"))
+        for file_path in sorted(file_list):
+            ra_path = os.path.join(self.seq_path, "range_angle_numpy", file_path)
             ra_matrix = np.load(ra_path)
-            # Range-Doppler visualization
             data.append(ra_matrix)
         return data
 
-    def get_range_angle_stream_data(self):
+    def get_range_doppler_stream_data(self):
         data = []
-        for i in range(100, 1000):
-            ra_path = os.path.join(
-                self.seq_path, "range_angle_numpy", "000" + str(i) + ".npy"
-            )
-            ra_matrix = np.load(ra_path)
-            # Range-Doppler visualization
-            data.append(ra_matrix)
+        file_list = os.listdir(os.path.join(self.seq_path, "range_doppler_numpy"))
+        for file_path in file_list:
+            rd_path = os.path.join(self.seq_path, "range_doppler_numpy", file_path)
+            rd_matrix = np.load(rd_path)
+            data.append(rd_matrix)
         return data
 
-    def visualize_matrix(self, matrix, selection=0):
+    def visualize_matrix(self, frame_name, selection=0):
         """
         Visualize matrix in notebook
         :param matrix:
@@ -177,10 +173,10 @@ class RadarLoader:
         plt.show()
 
 
-seq_name = "2020-02-28-13-13-43"
-instances = ["000670", "000673"]
-frame_name = "000100"
-r = RadarLoader(seq_name)
-# r.display_color_image_stream(frame_name)
-r.display_range_angle_stream(frame_name)
-# r.display_range_doppler_stream(frame_name)
+# seq_name = "2020-02-28-13-13-43"
+# instances = ["000670", "000673"]
+# frame_name = "000100"
+# r = RadarLoader(seq_name)
+# # r.display_color_image_stream(frame_name)
+# r.display_range_angle_stream(frame_name)
+# # r.display_range_doppler_stream(frame_name)

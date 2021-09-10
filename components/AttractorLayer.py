@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -13,7 +14,17 @@ SHIFT = 0.05  # TODO : Check this
 
 
 class AttractorLayer:
-    def __init__(self, n_x=64, n_y=64):
+    def __init__(
+        self,
+        n_x=64,
+        n_y=64,
+        tau=TAU,
+        intensity=INTENSITY,
+        cutoff_dist=CUTOFF_DIST,
+        sigma=SIGMA,
+        shift=SHIFT,
+        clip=False,
+    ):
         self.n_x = n_x  # X length of the grid points
         self.n_y = n_y  # Y length of the grid points
         self.neuron_activities = np.zeros(self.n_x * self.n_y)
@@ -21,6 +32,12 @@ class AttractorLayer:
         self.inter_neuron_connections = np.zeros(
             (self.n_x * self.n_y, self.n_x * self.n_y)
         )
+        self.tau = tau
+        self.intensity = intensity
+        self.cutoff_dist = cutoff_dist
+        self.sigma = sigma
+        self.shift = shift
+        self.clip = clip
 
     def visualize_neuron_activities(self):
         # Visualize cell_dists
@@ -46,9 +63,21 @@ class AttractorLayer:
         """
         # TODO : Incomplete, also need to include the neuron itself.
         tf_result = self.transfer_function(i)
-        self.new_neuron_activities[i] = tf_result * (
-            1 - TAU
-        ) + TAU * tf_result / np.sum(self.neuron_activities)
+        if self.clip:
+            self.new_neuron_activities[i] = tf_result * (
+                1 - self.tau
+            ) + self.tau * tf_result / np.sum(self.neuron_activities)
+            if self.new_neuron_activities[i] < 0:
+                self.new_neuron_activities[i] = 0
+        else:
+            self.new_neuron_activities[i] = tf_result * (
+                1 - self.tau
+            ) + self.tau * tf_result / np.sum(self.neuron_activities)
+
+    def update_activities(self):
+        for i in range(0, self.n_x * self.n_y):
+            self.update_activity(i)
+        self.neuron_activities = self.new_neuron_activities
 
     def get_distance_bw_neurons(self, i, j):
         """
@@ -69,9 +98,9 @@ class AttractorLayer:
         """
         if i != j:
             dist = self.get_distance_bw_neurons(i, j)
-            if dist < CUTOFF_DIST:
+            if dist < self.cutoff_dist:
                 self.inter_neuron_connections[i][j] = (
-                    INTENSITY * np.exp(-dist / (SIGMA ** 2)) - SHIFT
+                    self.intensity * np.exp(-dist / (self.sigma ** 2)) - self.shift
                 )
             else:
                 self.inter_neuron_connections[i][j] = 0
@@ -84,8 +113,21 @@ class AttractorLayer:
             for j in range(0, self.n_x * self.n_y):
                 self.set_weight(i, j)
 
-    def evaluate_input(self, data_entry):
-        pass
+    def forward_pass(self, data_entry: np.ndarray, number_of_passes):
+        self.neuron_activities = data_entry / np.sum(data_entry)  # TODO: Check this
+        for i in range(0, number_of_passes):
+            self.update_activities()
 
-    def forward_pass(self, data_entry):
-        pass
+    def forward_pass_visualization(self, data_entry: np.ndarray, number_of_passes):
+        data = []
+        self.neuron_activities = data_entry / np.sum(data_entry)  # TODO: Check this
+        for i in range(0, number_of_passes):
+            self.update_activities()
+            data.append(np.reshape(self.neuron_activities, (-1, self.n_y)).copy())
+        return data
+
+    # def load_network(self):
+    #     pass
+    #
+    # def save_network(self):
+    #     pass
