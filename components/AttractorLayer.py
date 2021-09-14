@@ -8,6 +8,8 @@ INTENSITY = 0.3  # TODO : Check this
 CUTOFF_DIST = 10  # TODO : Change this
 SIGMA = 0.24  # TODO: Check this
 SHIFT = 0.05  # TODO : Check this
+BETA = 1.0
+K_INHIB = 1.0
 # TODO : Also maybe plot the equation like in the paper
 # A MODEL OF GRID CELLS BASED ON
 # A TWISTED TORUS TOPOLOGY
@@ -23,11 +25,14 @@ class AttractorLayer:
         cutoff_dist=CUTOFF_DIST,
         sigma=SIGMA,
         shift=SHIFT,
+        beta=BETA,
+        k=K_INHIB,
         clip=False,
     ):
         self.n_x = n_x  # X length of the grid points
         self.n_y = n_y  # Y length of the grid points
         self.neuron_activities = np.zeros(self.n_x * self.n_y)
+        self.new_neuron_potentials = np.zeros(self.n_x * self.n_y)
         self.new_neuron_activities = np.zeros(self.n_x * self.n_y)
         self.inter_neuron_connections = np.zeros(
             (self.n_x * self.n_y, self.n_x * self.n_y)
@@ -38,10 +43,15 @@ class AttractorLayer:
         self.sigma = sigma
         self.shift = shift
         self.clip = clip
+        self.beta = beta
+        self.k = k
 
-    def visualize_neuron_activities(self):
+    def visualize_neuron_activities(self, neurons=None):
         # Visualize cell_dists
-        neuron_activities_2d = np.reshape(self.neuron_activities, (-1, self.n_y))
+        if neurons:
+            neuron_activities_2d = np.reshape(neurons, (-1, self.n_y))
+        else:
+            neuron_activities_2d = np.reshape(self.neuron_activities, (-1, self.n_y))
         fig, ax = plt.subplots()
 
         cell_dists_map = ax.imshow(neuron_activities_2d)
@@ -56,28 +66,32 @@ class AttractorLayer:
         """
         return np.sum(self.neuron_activities * self.inter_neuron_connections[i])
 
-    def update_activity(self, i):
+    def update_potential(self, i, v_ext):
         """
         Updates neuron activity of neuron i
         :param i: Neuron index
         """
-        # TODO : Incomplete, also need to include the neuron itself.
-        tf_result = self.transfer_function(i)
-        if self.clip:
-            self.new_neuron_activities[i] = tf_result * (
-                1 - self.tau
-            ) + self.tau * tf_result / np.sum(self.neuron_activities)
-            if self.new_neuron_activities[i] < 0:
-                self.new_neuron_activities[i] = 0
-        else:
-            self.new_neuron_activities[i] = tf_result * (
-                1 - self.tau
-            ) + self.tau * tf_result / np.sum(self.neuron_activities)
+        tf_result = self.beta * self.transfer_function(i)
+        self.new_neuron_potentials[i] = tf_result + v_ext
+        # if self.clip:
+        #     self.new_neuron_potentials[i] = tf_result + v_ext
+        #     if self.new_neuron_potentials[i] < 0:
+        #         self.new_neuron_potentials[i] = 0
+        # else:
+        #
+        # self.new_neuron_activities[i] = tf_result * (
+        #     1 - self.tau
+        # ) + self.tau * tf_result / np.sum(self.neuron_activities)
 
-    def update_activities(self):
+    def update_activities(self, external_input):
         for i in range(0, self.n_x * self.n_y):
-            self.update_activity(i)
-        self.neuron_activities = self.new_neuron_activities
+            self.update_potential(i, external_input[i])
+        if self.clip:
+            self.new_neuron_potentials.clip(0)
+        sqrd_potentials = self.new_neuron_potentials * self.new_neuron_potentials
+        self.neuron_activities = sqrd_potentials / self.k * np.sum(sqrd_potentials)
+
+        # self.neuron_activities = self.new_neuron_potentials
 
     def get_distance_bw_neurons(self, i, j):
         """
@@ -87,7 +101,7 @@ class AttractorLayer:
         :return: Distance between two neurons
         """
         return np.sqrt(
-            (i / self.n_x - j / self.n_x) ** 2 + (i % self.n_x - j % self.n_x) ** 2
+            (i // self.n_x - j // self.n_x) ** 2 + (i % self.n_x - j % self.n_x) ** 2
         )
 
     def set_weight(self, i, j):
@@ -113,21 +127,28 @@ class AttractorLayer:
             for j in range(0, self.n_x * self.n_y):
                 self.set_weight(i, j)
 
-    def forward_pass(self, data_entry: np.ndarray, number_of_passes):
-        self.neuron_activities = data_entry / np.sum(data_entry)  # TODO: Check this
+    def forward_pass(self, data_entry: np.ndarray, number_of_passes=1):
+        self.neuron_activities = data_entry / np.max(data_entry)  # TODO: Check this
         for i in range(0, number_of_passes):
-            self.update_activities()
+            self.update_activities(data_entry)
 
-    def forward_pass_visualization(self, data_entry: np.ndarray, number_of_passes):
+    def forward_pass_visualization(self, data_entry: np.ndarray, number_of_passes=1):
         data = []
-        self.neuron_activities = data_entry / np.sum(data_entry)  # TODO: Check this
         for i in range(0, number_of_passes):
-            self.update_activities()
+            self.update_activities(data_entry)
             data.append(np.reshape(self.neuron_activities, (-1, self.n_y)).copy())
         return data
 
-    # def load_network(self):
-    #     pass
-    #
-    # def save_network(self):
-    #     pass
+    def process_data(self, data_stream: [np.ndarray]):
+        # TODO: Implement this after testing in notebook
+        pass
+
+    def process_data_visalization(self, data_stream: [np.ndarray]):
+        # TODO: Implement this after testing in notebook
+        pass
+
+    def load_network(self, file_path):
+        self.inter_neuron_connections = np.load(file_path)
+
+    def save_network(self, file_path):
+        np.save(file_path, self.inter_neuron_connections)
