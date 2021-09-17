@@ -1,3 +1,5 @@
+import math
+
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -89,8 +91,9 @@ class AttractorLayer:
         if self.clip:
             self.new_neuron_potentials.clip(0)
         sqrd_potentials = self.new_neuron_potentials * self.new_neuron_potentials
-        self.neuron_activities = sqrd_potentials / self.k * np.sum(sqrd_potentials)
-
+        activities_ = sqrd_potentials / self.k * np.sum(sqrd_potentials)
+        self.neuron_activities = activities_ / np.max(activities_)
+        # self.neuron_activities = sqrd_potentials / self.k * np.sum(sqrd_potentials)
         # self.neuron_activities = self.new_neuron_potentials
 
     def get_distance_bw_neurons(self, i, j):
@@ -115,7 +118,7 @@ class AttractorLayer:
             if dist < self.cutoff_dist:
                 self.inter_neuron_connections[i][j] = (
                     self.intensity * np.exp(-dist / (self.sigma ** 2)) - self.shift
-                )
+                )  # ) / (math.pi * 2 * self.sigma ** 2) - self.shift
             else:
                 self.inter_neuron_connections[i][j] = 0
         else:

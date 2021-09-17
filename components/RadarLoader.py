@@ -135,13 +135,24 @@ class RadarLoader:
             cv2.imshow("image", resized)
             cv2.waitKey(500)
 
-    def get_range_angle_stream_data(self):
+    def get_range_angle_stream_data(self, clip_and_normalize=False, resize=(64, 64)):
         data = []
         file_list = os.listdir(os.path.join(self.seq_path, "range_angle_numpy"))
         for file_path in sorted(file_list):
             ra_path = os.path.join(self.seq_path, "range_angle_numpy", file_path)
             ra_matrix = np.load(ra_path)
-            data.append(ra_matrix)
+            if clip_and_normalize:
+                data.append(
+                    cv2.resize(
+                        ra_matrix.clip(0)
+                        / np.max(
+                            ra_matrix,
+                        ),
+                        resize,
+                    )
+                )
+            else:
+                data.append(ra_matrix)
         return data
 
     def get_range_angle_stream_data_differentiated(
@@ -156,8 +167,10 @@ class RadarLoader:
                 continue
             ra_path = os.path.join(self.seq_path, "range_angle_numpy", file_path)
             ra_path_bf = os.path.join(self.seq_path, "range_angle_numpy", file_before)
+            file_before = file_path
             ra_matrix = np.load(ra_path)
             ra_matrix_bf = np.load(ra_path_bf)
+
             if clip_and_normalize:
                 clipped_normalized = ra_matrix - ra_matrix_bf
                 data.append(
