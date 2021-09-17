@@ -12,6 +12,8 @@ SIGMA = 0.24  # TODO: Check this
 SHIFT = 0.05  # TODO : Check this
 BETA = 1.0
 K_INHIB = 1.0
+X_EYE = 1.0
+Y_EYE = 1.0
 # TODO : Also maybe plot the equation like in the paper
 # A MODEL OF GRID CELLS BASED ON
 # A TWISTED TORUS TOPOLOGY
@@ -29,6 +31,8 @@ class AttractorLayer:
         shift=SHIFT,
         beta=BETA,
         k=K_INHIB,
+        x_eye=X_EYE,
+        y_eye=Y_EYE,
         clip=False,
     ):
         self.n_x = n_x  # X length of the grid points
@@ -47,6 +51,8 @@ class AttractorLayer:
         self.clip = clip
         self.beta = beta
         self.k = k
+        self.x_eye = x_eye
+        self.y_eye = y_eye
 
     def visualize_neuron_activities(self, neurons=None):
         # Visualize cell_dists
@@ -104,7 +110,8 @@ class AttractorLayer:
         :return: Distance between two neurons
         """
         return np.sqrt(
-            (i // self.n_x - j // self.n_x) ** 2 + (i % self.n_x - j % self.n_x) ** 2
+            self.x_eye * (i // self.n_x - j // self.n_x) ** 2
+            + self.y_eye * (i % self.n_x - j % self.n_x) ** 2
         )
 
     def set_weight(self, i, j):

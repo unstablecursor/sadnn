@@ -135,22 +135,23 @@ class RadarLoader:
             cv2.imshow("image", resized)
             cv2.waitKey(500)
 
-    def get_range_angle_stream_data(self, clip_and_normalize=False, resize=(64, 64)):
+    def get_range_angle_stream_data(
+        self, clip_and_normalize=False, resize=(64, 64), mean_normalization=False
+    ):
         data = []
         file_list = os.listdir(os.path.join(self.seq_path, "range_angle_numpy"))
         for file_path in sorted(file_list):
             ra_path = os.path.join(self.seq_path, "range_angle_numpy", file_path)
             ra_matrix = np.load(ra_path)
             if clip_and_normalize:
-                data.append(
-                    cv2.resize(
-                        ra_matrix.clip(0)
-                        / np.max(
-                            ra_matrix,
-                        ),
-                        resize,
-                    )
+                entry_ = cv2.resize(
+                    ra_matrix.clip(0)
+                    / np.max(
+                        ra_matrix,
+                    ),
+                    resize,
                 )
+                data.append(entry_)
             else:
                 data.append(ra_matrix)
         return data
@@ -172,7 +173,9 @@ class RadarLoader:
             ra_matrix_bf = np.load(ra_path_bf)
 
             if clip_and_normalize:
-                clipped_normalized = ra_matrix - ra_matrix_bf
+                clipped_normalized = ra_matrix / np.max(
+                    ra_matrix
+                ) - ra_matrix_bf / np.max(ra_matrix_bf)
                 data.append(
                     cv2.resize(
                         clipped_normalized.clip(0)
