@@ -24,6 +24,13 @@ class RadarLoader:
         self.warehouse = self.config["data"]["warehouse"]
         self.carrada = os.path.join(self.warehouse)
         self.seq_path = os.path.join(self.carrada, self.seq_name)
+        annotations_path = os.path.join(self.carrada, "annotations_frame_oriented.json")
+        # Load data
+
+        # Annotations
+        with open(annotations_path, "r") as fp:
+            annotations = json.load(fp)
+        self.annotations = annotations[self.seq_name]
 
     def load_data_from_frame(self, frame_name):
         rd_path = os.path.join(
@@ -43,9 +50,7 @@ class RadarLoader:
         # Annotations
         with open(annotations_path, "r") as fp:
             annotations = json.load(fp)
-        annotations = annotations[self.seq_name][
-            frame_name
-        ]  # Keep annotations of interest
+        self.annotations = annotations[self.seq_name]
 
         # Range-angle and range-Doppler matrices
         """
@@ -140,6 +145,9 @@ class RadarLoader:
     ):
         data = []
         file_list = os.listdir(os.path.join(self.seq_path, "range_angle_numpy"))
+        ra_path = os.path.join(self.seq_path, "range_angle_numpy", "000000.npy")
+        ra_matrix = np.load(ra_path)
+        size_bf = ra_matrix.shape
         for file_path in sorted(file_list):
             ra_path = os.path.join(self.seq_path, "range_angle_numpy", file_path)
             ra_matrix = np.load(ra_path)
@@ -154,7 +162,7 @@ class RadarLoader:
                 data.append(entry_)
             else:
                 data.append(ra_matrix)
-        return data
+        return data, size_bf
 
     def get_range_angle_stream_data_differentiated(
         self, clip_and_normalize=False, resize=(64, 64)
@@ -197,6 +205,9 @@ class RadarLoader:
             rd_matrix = np.load(rd_path)
             data.append(rd_matrix)
         return data
+
+    def get_annotations(self):
+        return self.annotations
 
     def visualize_matrix(self, frame_name, selection=0):
         """
