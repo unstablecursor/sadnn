@@ -85,6 +85,19 @@ class RadarLoader:
             cv2.imshow("image", img)
             cv2.waitKey(200)
 
+    def get_color_image_datastream(self, resize=(64, 64)):
+        data = []
+        # Camera image of the scene
+        data = []
+        file_list = os.listdir(os.path.join(self.seq_path, "camera_images"))
+        for file_path in sorted(file_list):
+            img_path = os.path.join(self.seq_path, "camera_images", file_path)
+            img = cv2.imread(img_path)
+
+            data.append(img)
+
+        return data
+
     def display_range_doppler(self, frame_name):
         ra_matrix, rd_matrix, annotations = self.load_data_from_frame(frame_name)
         # Range-Doppler visualization
