@@ -14,9 +14,6 @@ BETA = 1.0
 K_INHIB = 1.0
 X_EYE = 1.0
 Y_EYE = 1.0
-# TODO : Also maybe plot the equation like in the paper
-# A MODEL OF GRID CELLS BASED ON
-# A TWISTED TORUS TOPOLOGY
 
 
 class AttractorLayer:
@@ -97,8 +94,7 @@ class AttractorLayer:
         if self.clip:
             self.new_neuron_potentials.clip(0)
         sqrd_potentials = self.new_neuron_potentials * self.new_neuron_potentials
-        activities_ = sqrd_potentials / self.k * np.sum(sqrd_potentials)
-        self.neuron_activities = activities_ / np.max(activities_)
+        self.neuron_activities = sqrd_potentials / (self.k * np.sum(sqrd_potentials))
         # self.neuron_activities = sqrd_potentials / self.k * np.sum(sqrd_potentials)
         # self.neuron_activities = self.new_neuron_potentials
 
@@ -124,8 +120,8 @@ class AttractorLayer:
             dist = self.get_distance_bw_neurons(i, j)
             if dist < self.cutoff_dist:
                 self.inter_neuron_connections[i][j] = (
-                    self.intensity * np.exp(-dist / (self.sigma ** 2)) - self.shift
-                )  # ) / (math.pi * 2 * self.sigma ** 2) - self.shift
+                    self.intensity * np.exp(-(dist ** 2) / (self.sigma ** 2))
+                ) / (math.pi * 2 * (self.sigma ** 2))
             else:
                 self.inter_neuron_connections[i][j] = 0
         else:
