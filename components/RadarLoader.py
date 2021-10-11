@@ -222,6 +222,57 @@ class RadarLoader:
     def get_annotations(self):
         return self.annotations
 
+    def visualize_annotations(self, differentiated=False, size_bf=(64, 64)):
+        annotations = self.get_annotations()
+        print("HERE")
+        dense_ = []
+        for entry in annotations:
+            arrr = np.zeros(size_bf)
+            for ittem in annotations[entry]:
+                points = annotations[entry][ittem]["range_angle"]["dense"]
+                annot_pts = np.array(points)
+                arrr[annot_pts[:, 0], annot_pts[:, 1]] = 0.5
+            resized_annot = cv2.resize(arrr, (64, 64))
+            dense_.append(resized_annot.copy())
+        sparse_ = []
+        sparse_mean_points = []
+        sparse_mp_visualization = []
+        for entry in annotations:
+            arrr = np.zeros(size_bf)
+            arrr_mp = np.zeros(size_bf)
+            s__ = []
+            for ittem in annotations[entry]:
+                points = annotations[entry][ittem]["range_angle"]["sparse"]
+                annot_pts = np.array(points)
+                mean_point = np.sum(np.array(points), axis=0) // len(np.array(points))
+                s__.append(mean_point)
+                # PRINT HERE? TO SEE THE POINTS? THEN CALCULATE THE MEAN POINT
+                arrr[annot_pts[:, 0], annot_pts[:, 1]] = 0.5
+                arrr_mp[mean_point[0], mean_point[1]] = 1.0
+            sparse_mean_points.append(s__.copy())
+            resized_annot = cv2.resize(arrr, (64, 64))
+            sparse_.append(resized_annot.copy())
+            sparse_mp_visualization.append(cv2.resize(arrr_mp, (64, 64)).copy())
+        box_ = []
+        for entry in annotations:
+            arrr = np.zeros(size_bf)
+            for ittem in annotations[entry]:
+                points = annotations[entry][ittem]["range_angle"]["box"]
+                annot_pts = np.array(points)
+                arrr[annot_pts[:, 0], annot_pts[:, 1]] = 0.5
+            resized_annot = cv2.resize(arrr, (64, 64))
+            box_.append(resized_annot.copy())
+        if differentiated:
+            return (
+                dense_[1:],
+                sparse_[1:],
+                box_[1:],
+                sparse_mean_points[1:],
+                sparse_mp_visualization[1:],
+            )
+        else:
+            return dense_, sparse_, box_, sparse_mean_points, sparse_mp_visualization
+
     def visualize_matrix(self, frame_name, selection=0):
         """
         Visualize matrix in notebook

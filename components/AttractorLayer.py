@@ -77,7 +77,7 @@ class AttractorLayer:
         :param i: Neuron index
         """
         tf_result = self.beta * self.transfer_function(i)
-        self.new_neuron_potentials[i] = tf_result + v_ext
+        self.new_neuron_potentials[i] = tf_result + v_ext + self.neuron_activities[i]
         # if self.clip:
         #     self.new_neuron_potentials[i] = tf_result + v_ext
         #     if self.new_neuron_potentials[i] < 0:
@@ -140,8 +140,10 @@ class AttractorLayer:
 
     def forward_pass_visualization(self, data_entry: np.ndarray, number_of_passes=1):
         data = []
-        for i in range(0, number_of_passes):
-            self.update_activities(data_entry)
+        self.update_activities(data_entry)
+        data.append(np.reshape(self.neuron_activities, (-1, self.n_y)).copy())
+        for i in range(0, number_of_passes - 1):
+            self.update_activities(np.zeros((self.n_x * self.n_y)))
             data.append(np.reshape(self.neuron_activities, (-1, self.n_y)).copy())
         return data
 
