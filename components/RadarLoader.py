@@ -226,14 +226,19 @@ class RadarLoader:
         annotations = self.get_annotations()
         print("HERE")
         dense_ = []
+        dense_mp_visualization = []
         for entry in annotations:
             arrr = np.zeros(size_bf)
+            arrr_mp_dense = np.zeros(size_bf)
             for ittem in annotations[entry]:
                 points = annotations[entry][ittem]["range_angle"]["dense"]
                 annot_pts = np.array(points)
+                mean_point = np.sum(np.array(points), axis=0) // len(np.array(points))
+                arrr_mp_dense[mean_point[0], mean_point[1]] = 1
                 arrr[annot_pts[:, 0], annot_pts[:, 1]] = 0.5
             resized_annot = cv2.resize(arrr, (64, 64))
             dense_.append(resized_annot.copy())
+            dense_mp_visualization.append(cv2.resize(arrr_mp_dense, (64, 64)).copy())
         sparse_ = []
         sparse_mean_points = []
         sparse_mp_visualization = []
@@ -271,7 +276,7 @@ class RadarLoader:
                 sparse_mp_visualization[1:],
             )
         else:
-            return dense_, sparse_, box_, sparse_mean_points, sparse_mp_visualization
+            return dense_, sparse_, box_, sparse_mean_points, dense_mp_visualization
 
     def visualize_matrix(self, frame_name, selection=0):
         """
