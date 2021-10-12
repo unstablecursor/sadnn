@@ -248,7 +248,7 @@ class RadarLoader:
                 s__.append(mean_point)
                 # PRINT HERE? TO SEE THE POINTS? THEN CALCULATE THE MEAN POINT
                 arrr[annot_pts[:, 0], annot_pts[:, 1]] = 0.5
-                arrr_mp[mean_point[0], mean_point[1]] = 1.0
+                arrr_mp[mean_point[0], mean_point[1]] = 1
             sparse_mean_points.append(s__.copy())
             resized_annot = cv2.resize(arrr, (64, 64))
             sparse_.append(resized_annot.copy())
