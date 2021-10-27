@@ -14,6 +14,7 @@ BETA = 1.0
 K_INHIB = 1.0
 X_EYE = 1.0
 Y_EYE = 1.0
+DECAY = 0.1
 
 
 class AttractorLayer:
@@ -30,6 +31,7 @@ class AttractorLayer:
         k=K_INHIB,
         x_eye=X_EYE,
         y_eye=Y_EYE,
+        decay=DECAY,
         clip=False,
     ):
         self.n_x = n_x  # X length of the grid points
@@ -50,6 +52,7 @@ class AttractorLayer:
         self.k = k
         self.x_eye = x_eye
         self.y_eye = y_eye
+        self.decay = decay
 
     def visualize_neuron_activities(self, neurons=None):
         # Visualize cell_dists
@@ -77,7 +80,9 @@ class AttractorLayer:
         :param i: Neuron index
         """
         tf_result = self.beta * self.transfer_function(i)
-        self.new_neuron_potentials[i] = tf_result + v_ext + self.neuron_activities[i]
+        self.new_neuron_potentials[i] = (
+            tf_result + v_ext + self.neuron_activities[i]  # - self.decay
+        )
         # if self.clip:
         #     self.new_neuron_potentials[i] = tf_result + v_ext
         #     if self.new_neuron_potentials[i] < 0:
@@ -92,9 +97,12 @@ class AttractorLayer:
         for i in range(0, self.n_x * self.n_y):
             self.update_potential(i, external_input[i])
         if self.clip:
-            self.new_neuron_potentials.clip(0)
-        sqrd_potentials = self.new_neuron_potentials * self.new_neuron_potentials
-        self.neuron_activities = sqrd_potentials / (self.k * np.sum(sqrd_potentials))
+            self.new_neuron_potentials = self.new_neuron_potentials.clip(min=0, max=1)
+        self.neuron_activities = self.new_neuron_potentials
+        # sqrd_potentials = self.new_neuron_potentials * self.new_neuron_potentials
+        # self.neuron_activities = sqrd_potentials
+        # self.neuron_activities = sqrd_potentials / (self.k * np.sum(sqrd_potentials))
+        # self.neuron_activities = sqrd_potentials / np.max(sqrd_potentials)
 
     def get_distance_bw_neurons(self, i, j):
         """
@@ -119,7 +127,7 @@ class AttractorLayer:
             if dist < self.cutoff_dist:
                 self.inter_neuron_connections[i][j] = (
                     self.intensity * np.exp(-(dist ** 2) / (self.sigma ** 2))
-                ) / (math.pi * 2 * (self.sigma ** 2))
+                ) / (math.pi * 2 * (self.sigma ** 2)) - self.shift
             else:
                 self.inter_neuron_connections[i][j] = 0
         else:

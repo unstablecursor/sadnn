@@ -199,6 +199,36 @@ class RadarLoader:
                 ) - ra_matrix_bf / np.max(ra_matrix_bf)
                 data.append(
                     cv2.resize(
+                        clipped_normalized.clip(0),
+                        resize,
+                    )
+                )
+            else:
+                data.append(ra_matrix - ra_matrix_bf)
+        return data
+
+    def get_range_angle_stream_data_differentiated_normalized(
+        self, clip_and_normalize=False, resize=(64, 64)
+    ):
+        data = []
+        file_list = sorted(os.listdir(os.path.join(self.seq_path, "range_angle_numpy")))
+        file_before = None
+        for file_path in sorted(file_list):
+            if file_before is None:
+                file_before = file_path
+                continue
+            ra_path = os.path.join(self.seq_path, "range_angle_numpy", file_path)
+            ra_path_bf = os.path.join(self.seq_path, "range_angle_numpy", file_before)
+            file_before = file_path
+            ra_matrix = np.load(ra_path)
+            ra_matrix_bf = np.load(ra_path_bf)
+
+            if clip_and_normalize:
+                clipped_normalized = ra_matrix / np.max(
+                    ra_matrix
+                ) - ra_matrix_bf / np.max(ra_matrix_bf)
+                data.append(
+                    cv2.resize(
                         clipped_normalized.clip(0)
                         / np.max(
                             clipped_normalized,

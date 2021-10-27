@@ -29,28 +29,43 @@ class SimulatedRadar:
         self.sigma = SIGMA
 
         self.path = []
+        self.path_2 = []
         x = self.x_start
         y = self.y_start
         while 0 < x < RES_X - 1 and 0 < y < RES_X - 1:
             x += random.randint(-1, 1)
             y += random.randint(0, 1)
-            if random.randint(0, 20) % 5 == 0:
+            if random.randint(1, 20) % 10 == 0:
                 self.path.append(random.randint(0, 64) + random.randint(0, 64) * RES_X)
             else:
                 self.path.append(x + y * RES_X)
+
+        x = self.x_start + 10
+        y = self.y_start + 61
+        while 0 < x < RES_X - 1 and 0 < y < RES_X - 1:
+            x += random.randint(-1, 1)
+            y -= random.randint(0, 1)
+            if random.randint(1, 20) % 10 == 0:
+                self.path_2.append(
+                    random.randint(0, 64) + random.randint(0, 64) * RES_X
+                )
+            else:
+                self.path_2.append(x + y * RES_X)
 
     def get_path(self):
         return self.path
 
     def get_random_datastream(self):
         datastream = []
-        path = self.get_path()
-        for point in path:
+        path = self.path
+        path_2 = self.path_2
+
+        for point_nr in range(0, min(len(path), len(path_2))):
             activations = []
-            distances = []
-            j = point
+            j = path[point_nr]
+            jj = path_2[point_nr]
             grid = np.empty((RES_X, RES_X))
-            if random.randint(0, 100) % 20 == 0:
+            if random.randint(0, 100) % 50 == 0:
                 datastream.append(grid.copy())
                 continue
 
@@ -59,14 +74,24 @@ class SimulatedRadar:
                     X_EYE * (i // RES_X - j // RES_X) ** 2
                     + Y_EYE * (i % RES_X - j % RES_X) ** 2
                 )
+                dist_2 = np.sqrt(
+                    X_EYE * (i // RES_X - jj // RES_X) ** 2
+                    + Y_EYE * (i % RES_X - jj % RES_X) ** 2
+                )
                 if dist > CUTOFF_DIST:
-                    transfer_func = 0
+                    transfer_func_1 = 0
                 else:
-                    transfer_func = BETA * (
+                    transfer_func_1 = BETA * (
                         (INTENSITY * np.exp(-dist / (SIGMA ** 2))) - SHIFT
                     )
+                if dist_2 > CUTOFF_DIST:
+                    transfer_func_2 = 0
+                else:
+                    transfer_func_2 = BETA * (
+                        (INTENSITY * np.exp(-dist_2 / (SIGMA ** 2))) - SHIFT
+                    )
+                transfer_func = transfer_func_1 + transfer_func_2
 
-                distances.append(dist)
                 activations.append(transfer_func)
                 if random.randint(0, 45) % 40 == 0:
                     grid[i // RES_X][i % RES_X] = 0
