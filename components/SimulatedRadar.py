@@ -30,15 +30,18 @@ class SimulatedRadar:
 
         self.path = []
         self.path_2 = []
+        self.gt_path = []
+        self.gt_path_2 = []
         x = self.x_start
         y = self.y_start
         while 0 < x < RES_X - 1 and 0 < y < RES_X - 1:
             x += random.randint(-1, 1)
             y += random.randint(0, 1)
             if random.randint(1, 20) % 10 == 0:
-                self.path.append(random.randint(0, 64) + random.randint(0, 64) * RES_X)
+                self.path.append(random.randint(0, 63) + random.randint(0, 63) * RES_X)
             else:
                 self.path.append(x + y * RES_X)
+            self.gt_path.append(x + y * RES_X)
 
         x = self.x_start + 10
         y = self.y_start + 61
@@ -47,13 +50,23 @@ class SimulatedRadar:
             y -= random.randint(0, 1)
             if random.randint(1, 20) % 10 == 0:
                 self.path_2.append(
-                    random.randint(0, 64) + random.randint(0, 64) * RES_X
+                    random.randint(0, 63) + random.randint(0, 63) * RES_X
                 )
             else:
                 self.path_2.append(x + y * RES_X)
+            self.gt_path_2.append(x + y * RES_X)
 
-    def get_path(self):
-        return self.path
+    def get_paths(self):
+        min_length = min((len(self.path), len(self.path_2)))
+        paths = np.empty([2, min_length, 2], dtype=int)
+
+        for i in range(0, min_length):
+            paths[0][i] = [self.gt_path[i] // 64, self.gt_path[i] % 64]
+
+        for i in range(0, min_length):
+            paths[1][i] = [self.gt_path_2[i] // 64, self.gt_path_2[i] % 64]
+
+        return paths
 
     def get_random_datastream(self):
         datastream = []
