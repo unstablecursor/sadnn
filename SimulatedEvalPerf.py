@@ -198,6 +198,6 @@ for decay_ in [0.15, 0.2, 0.25]:
                     SHIFT = shift_  # * 1000
 
                     anim.save(
-                        f"animations/mod_clipbz_{int(MIN_CLIP*1000)}_b_{int(BETA)}_dec_{int(DECAY*10)}_sig_{int(SIGMA)}_pass_{int(NR_OF_PASSES)}.gif",
+                        f"animations/mod_clipbz_decay_{int(DECAY*100)}_beta_{int(BETA)}_shift_{int(SHIFT*1000)}_sigma_{int(SIGMA)}_pass_{int(NR_OF_PASSES)}.gif",
                         fps=10,
                     )
