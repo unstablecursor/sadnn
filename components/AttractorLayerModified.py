@@ -14,10 +14,10 @@ BETA = 1.0
 K_INHIB = 1.0
 X_EYE = 1.0
 Y_EYE = 1.0
-DECAY = 0.1
+DECAY = 0.0
 
 
-class AttractorLayer:
+class AttractorLayerModified:
     def __init__(
         self,
         n_x=64,
@@ -81,28 +81,20 @@ class AttractorLayer:
         """
         tf_result = self.beta * self.transfer_function(i)
         self.new_neuron_potentials[i] = (
-            tf_result + v_ext + self.neuron_activities[i]  # - self.decay
+            tf_result + v_ext + self.neuron_activities[i] - self.decay
         )
-        # if self.clip:
-        #     self.new_neuron_potentials[i] = tf_result + v_ext
-        #     if self.new_neuron_potentials[i] < 0:
-        #         self.new_neuron_potentials[i] = 0
-        # else:
-        #
-        # self.new_neuron_activities[i] = tf_result * (
-        #     1 - self.tau
-        # ) + self.tau * tf_result / np.sum(self.neuron_activities)
 
     def update_activities(self, external_input):
         for i in range(0, self.n_x * self.n_y):
             self.update_potential(i, external_input[i])
         if self.clip:
             self.new_neuron_potentials = self.new_neuron_potentials.clip(min=0, max=1)
-        self.neuron_activities = self.new_neuron_potentials
+        self.neuron_activities = self.new_neuron_potentials.copy()
         # sqrd_potentials = self.new_neuron_potentials * self.new_neuron_potentials
         # self.neuron_activities = sqrd_potentials
-        # self.neuron_activities = sqrd_potentials / (self.k * np.sum(sqrd_potentials))
-        # self.neuron_activities = sqrd_potentials / np.max(sqrd_potentials)
+
+        # Normal self.neuron_activities = sqrd_potentials / (self.k * np.sum(sqrd_potentials))
+        # Max-out self.neuron_activities = sqrd_potentials / np.max(sqrd_potentials)
 
     def get_distance_bw_neurons(self, i, j):
         """

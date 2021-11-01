@@ -1,31 +1,17 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
-import os
-import cv2
-import json
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
 from components.AttractorLayer import AttractorLayer
-from components.RadarLoader import RadarLoader
 from components.SimulatedRadar import SimulatedRadar
 
 seq_name = "2020-02-28-13-13-43"
 
-
-# In[2]:
-
-
 data_loader = SimulatedRadar()
 data = data_loader.get_random_datastream()
-
-
-# In[3]:
-
 
 TAU = 1  # TODO: I don't know whether this is important
 INTENSITY = 1.0
@@ -36,18 +22,16 @@ CUTOFF_DIST = 10  # TODO : Change this
 X_EYE = 1.0
 Y_EYE = 1.0
 
-
 K_INHIB = 3.0
 
 
-# In[4]:
-for beta_val in [300, 600, 1000]:
-    for k_inhib in [3.0, 5.0, 10.0]:
-        for sigma in [3.0, 5.0, 10.0]:
-            for pass_nr in [3, 6, 9]:
-                for cutttoff in [5, 10, 20]:
-                    print(f"START WITH: K: {k_inhib}, BETA: {beta_val}")
-                    K_INHIB = k_inhib
+for beta_val in [100, 300, 500]:
+    for shift in [0.005, 0.01, 0.001]:
+        for sigma in [1.0, 2.0, 3.0, 5.0]:
+            for pass_nr in [1, 2, 3]:
+                for cutttoff in [10, 20]:
+                    print(f"START... ")
+                    SHIFT = shift
                     BETA = beta_val
                     SIGMA = sigma
                     CUTOFF_DIST = cutttoff
@@ -66,14 +50,10 @@ for beta_val in [300, 600, 1000]:
 
                     attr_layer.set_weights()
                     attr_layer.save_network(
-                        file_path=f"components/network_weights/net_k_{int(K_INHIB)}_beta_{int(BETA)}_sigma_{int(SIGMA*10)}_cutoff_{int(CUTOFF_DIST)}.npy"
+                        file_path=f"components/network_weights/net_trashhh.npy"
                     )
 
-                    # attr_layer.load_network(
-                    #     file_path=f"components/network_weights/net_k_{int(K_INHIB)}_beta_{int(BETA)}_sigma_{int(SIGMA*10)}.npy"
-                    # )
-
-                    # In[5]:
+                    # TODO: Load network if exist?
 
                     neuron_act = []
                     for data_entry in data:
@@ -83,9 +63,7 @@ for beta_val in [300, 600, 1000]:
                             )[pass_nr - 1]
                         )
 
-                    # In[6]:
-
-                    # In[7]:
+                    # TODO: Plot and save results
 
                     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 5), dpi=100)
                     fig.suptitle("Simulated Results", fontsize=10)
@@ -124,20 +102,6 @@ for beta_val in [300, 600, 1000]:
                     )
 
                     anim.save(
-                        f"animations/simulated_k_{int(K_INHIB)}_beta_{int(BETA)}_sigma_{int(SIGMA*10)}_pass_{int(pass_nr)}_cutoff_{int(CUTOFF_DIST)}.gif",
+                        f"animations/simulated_shift_{int(SHIFT*1000)}_beta_{int(BETA)}_sigma_{int(SIGMA*10)}_pass_{int(pass_nr)}_cutoff_{int(CUTOFF_DIST)}.gif",
                         fps=10,
                     )
-
-
-# fig.colorbar(cell_dists_map)
-
-# plt.show()
-
-
-# In[ ]:
-
-
-# In[ ]:
-
-
-# In[ ]:
