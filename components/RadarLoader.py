@@ -24,6 +24,7 @@ class RadarLoader:
         self.warehouse = self.config["data"]["warehouse"]
         self.carrada = os.path.join(self.warehouse)
         self.seq_path = os.path.join(self.carrada, self.seq_name)
+        self.max_pt = 0
         annotations_path = os.path.join(self.carrada, "annotations_frame_oriented.json")
         # Load data
 
@@ -31,6 +32,15 @@ class RadarLoader:
         with open(annotations_path, "r") as fp:
             annotations = json.load(fp)
         self.annotations = annotations[self.seq_name]
+        
+        file_list = sorted(os.listdir(os.path.join(self.seq_path, "range_angle_numpy")))
+        max_pt = 0
+        for file_path in sorted(file_list):
+            ra_path = os.path.join(self.seq_path, "range_angle_numpy", file_path)
+            ra_matrix = np.load(ra_path)
+
+            if self.max_pt < np.max(ra_matrix):
+                self.max_pt = np.max(ra_matrix)
 
     def load_data_from_frame(self, frame_name):
         rd_path = os.path.join(
@@ -154,7 +164,7 @@ class RadarLoader:
             cv2.waitKey(500)
 
     def get_range_angle_stream_data(
-        self, clip_and_normalize=False, resize=(64, 64), mean_normalization=False
+        self, clip_and_normalize=True, resize=(64, 64), mean_normalization=False
     ):
         data = []
         file_list = os.listdir(os.path.join(self.seq_path, "range_angle_numpy"))
@@ -166,10 +176,10 @@ class RadarLoader:
             ra_matrix = np.load(ra_path)
             if clip_and_normalize:
                 entry_ = cv2.resize(
-                    ra_matrix.clip(0)
-                    / np.max(
+                    (ra_matrix - np.min(ra_matrix))
+                    / (np.max(
                         ra_matrix,
-                    ),
+                    ) - np.min(ra_matrix)),
                     resize,
                 )
                 data.append(entry_)
@@ -224,21 +234,23 @@ class RadarLoader:
             ra_matrix_bf = np.load(ra_path_bf)
 
             if clip_and_normalize:
-                clipped_normalized = ra_matrix / np.max(
-                    ra_matrix
-                ) - ra_matrix_bf / np.max(ra_matrix_bf)
+                clipped_normalized = (ra_matrix - ra_matrix_bf) / (self.max_pt)
+                # clipped_normalized = ra_matrix - ra_matrix_bf
+                # clipped_normalized = clipped_normalized.clip(0) / np.max(clipped_normalized)
                 data.append(
                     cv2.resize(
                         clipped_normalized.clip(0)
-                        / np.max(
-                            clipped_normalized,
-                        ),
+                                                # / np.max(
+                                                #     clipped_normalized,
+                                                # )
+                        ,
                         resize,
                     )
                 )
             else:
                 data.append(ra_matrix - ra_matrix_bf)
         return data
+
 
     def get_range_doppler_stream_data(self):
         data = []
@@ -252,7 +264,9 @@ class RadarLoader:
     def get_annotations(self):
         return self.annotations
 
-    def visualize_annotations(self, differentiated=False, size_bf=(64, 64)):
+    def visualize_annotations(
+        self, differentiated=False, size_bf=(64, 64), size_x_=(64, 64)
+    ):
         annotations = self.get_annotations()
         print("HERE")
         dense_ = []
@@ -266,7 +280,7 @@ class RadarLoader:
                 mean_point = np.sum(np.array(points), axis=0) // len(np.array(points))
                 arrr_mp_dense[mean_point[0], mean_point[1]] = 1
                 arrr[annot_pts[:, 0], annot_pts[:, 1]] = 0.5
-            resized_annot = cv2.resize(arrr, (64, 64))
+            resized_annot = cv2.resize(arrr, size_x_)
             dense_.append(resized_annot.copy())
             dense_mp_visualization.append(cv2.resize(arrr_mp_dense, (64, 64)).copy())
         sparse_ = []
@@ -285,7 +299,7 @@ class RadarLoader:
                 arrr[annot_pts[:, 0], annot_pts[:, 1]] = 0.5
                 arrr_mp[mean_point[0], mean_point[1]] = 1
             sparse_mean_points.append(s__.copy())
-            resized_annot = cv2.resize(arrr, (64, 64))
+            resized_annot = cv2.resize(arrr, size_x_)
             sparse_.append(resized_annot.copy())
             sparse_mp_visualization.append(cv2.resize(arrr_mp, (64, 64)).copy())
         box_ = []
@@ -295,7 +309,7 @@ class RadarLoader:
                 points = annotations[entry][ittem]["range_angle"]["box"]
                 annot_pts = np.array(points)
                 arrr[annot_pts[:, 0], annot_pts[:, 1]] = 0.5
-            resized_annot = cv2.resize(arrr, (64, 64))
+            resized_annot = cv2.resize(arrr, size_x_)
             box_.append(resized_annot.copy())
         if differentiated:
             return (
@@ -326,6 +340,96 @@ class RadarLoader:
             cell_dists_map = ax.imshow(rd_matrix)
             fig.colorbar(rd_matrix)
         plt.show()
+
+    def get_spiking_ra_stream_differentiated_normalized(
+        self, clip_and_normalize=True, size_x=16, encoding_type="rate"
+    ):
+        time_bw_frames = 100.0  # miliseconds
+        data = self.get_range_angle_stream_data_differentiated_normalized(
+            clip_and_normalize, resize=(size_x, size_x)
+        )[70:-10]
+        if encoding_type == "rate":
+            data_spike = [[] for _ in range(size_x * size_x)]
+            time_step = 0.0
+            for datum in data:
+                for i in np.linspace(time_step, time_step + 100.0 - 1, 100):
+                    if i - time_step == 0:
+                        continue
+                    indices = np.argwhere(
+                        (i - time_step) % (1 / (datum * 0.1 + 0.0000001)) < 1
+                    )
+                    for indi in indices:
+                        data_spike[indi[0] * size_x + indi[1]].append(i)
+                time_step += 100.0
+            return data_spike
+        else:
+            return []
+
+    def get_spiking_ra_stream_differentiated_normalized_brian2(
+        self,
+        clip_and_normalize=True,
+        size_x=16,
+        encoding_type="rate",
+        time_bw_frames=100.0,
+        data_factor=0.1,
+    ):
+        data_spike = []
+        data_spike_index = []
+        data = self.get_range_angle_stream_data_differentiated_normalized(
+            clip_and_normalize, resize=(size_x, size_x)
+        )
+        if encoding_type == "rate":
+            time_step = 0.0
+            for datum in data:
+                for i in np.linspace(time_step, time_step + time_bw_frames - 1, 100):
+                    if i - time_step == 0:
+                        continue
+                    indices = np.argwhere(
+                        (i - time_step) % (1 / (datum * data_factor + 0.0000001)) < 1
+                    )
+                    for indi in indices:
+                        try:
+                            data_spike.append(i)
+                            data_spike_index.append(int(indi[0] * size_x + indi[1]))
+                        except Exception as e:
+                            print(indi)
+                time_step += time_bw_frames
+            return data_spike, data_spike_index
+        else:
+            return data_spike, data_spike_index
+        
+    def get_spiking_ra_stream_brian2(
+        self,
+        clip_and_normalize=True,
+        size_x=16,
+        encoding_type="rate",
+        time_bw_frames=100.0,
+        data_factor=0.1,
+    ):
+        data_spike = []
+        data_spike_index = []
+        data, _ = self.get_range_angle_stream_data(
+            clip_and_normalize=clip_and_normalize, resize=(size_x, size_x)
+        )
+        if encoding_type == "rate":
+            time_step = 0.0
+            for datum in data:
+                for i in np.linspace(time_step, time_step + time_bw_frames - 1, 100):
+                    if i - time_step == 0:
+                        continue
+                    indices = np.argwhere(
+                        (i - time_step) % (1 / (datum * data_factor + 0.0000001)) < 1
+                    )
+                    for indi in indices:
+                        try:
+                            data_spike.append(i)
+                            data_spike_index.append(int(indi[0] * size_x + indi[1]))
+                        except Exception as e:
+                            print(indi)
+                time_step += time_bw_frames
+            return data_spike, data_spike_index
+        else:
+            return data_spike, data_spike_index
 
 
 # seq_name = "2020-02-28-13-13-43"

@@ -23,7 +23,7 @@ RES_X = 64
 
 
 class SimulatedRadar:
-    def __init__(self, x_start=30, y_start=1, sigma=SIGMA):
+    def __init__(self, x_start=30, y_start=1, sigma=SIGMA, noise_factor=0.1):
         self.x_start = x_start
         self.y_start = y_start
         self.sigma = SIGMA
@@ -34,6 +34,7 @@ class SimulatedRadar:
         self.gt_path_2 = []
         x = self.x_start
         y = self.y_start
+        self.noise_factor = noise_factor
         while 0 < x < RES_X - 1 and 0 < y < RES_X - 1:
             x += random.randint(-1, 1)
             y += random.randint(0, 1)
@@ -68,7 +69,7 @@ class SimulatedRadar:
 
         return paths
 
-    def get_random_datastream(self):
+    def get_random_datastream(self, resize=(64, 64)):
         datastream = []
         path = self.path
         path_2 = self.path_2
@@ -79,7 +80,7 @@ class SimulatedRadar:
             jj = path_2[point_nr]
             grid = np.empty((RES_X, RES_X))
             if random.randint(0, 100) % 50 == 0:
-                datastream.append(grid.copy())
+                datastream.append(cv2.resize(grid, resize).copy())
                 continue
 
             for i in range(0, RES_X * RES_X):
@@ -103,13 +104,73 @@ class SimulatedRadar:
                     transfer_func_2 = BETA * (
                         (INTENSITY * np.exp(-dist_2 / (SIGMA ** 2))) - SHIFT
                     )
-                transfer_func = transfer_func_1 + transfer_func_2
+                transfer_func = transfer_func_1  # + transfer_func_2 # enable second object
 
                 activations.append(transfer_func)
                 if random.randint(0, 45) % 40 == 0:
                     grid[i // RES_X][i % RES_X] = 0
                 else:
                     grid[i // RES_X][i % RES_X] = transfer_func
-            datastream.append(grid.copy())
+                if np.max(grid) > 0.001:
+                    resized_grid = cv2.resize((grid / np.max(grid)), resize).copy()
+                else:
+                    resized_grid = np.zeros((RES_X, RES_X))
+            for i in range(0, RES_X * RES_X):
+                if random.randint(0, 100) % 50 == 0:
+                    resized_grid[i // RES_X][i % RES_X] = np.max(resized_grid) * self.noise_factor
+                    
+            datastream.append(resized_grid / np.max(resized_grid))
 
         return datastream
+
+    def get_random_datastream_spiking(
+        self, clip_and_normalize=True, size_x=64, encoding_type="rate"
+    ):
+        time_bw_frames = 100.0  # miliseconds
+        data = self.get_random_datastream(resize=(size_x, size_x))
+        if encoding_type == "rate":
+            data_spike = [[] for _ in range(size_x * size_x)]
+            time_step = 0.0
+            for datum in data:
+                for i in np.linspace(time_step, time_step + 100.0 - 1, 100):
+                    if i - time_step == 0:
+                        continue
+                    indices = np.argwhere(
+                        (i - time_step) % (1 / (datum + 0.0000001)) < 1
+                    )
+                    for indi in indices:
+                        try:
+                            data_spike[indi[0] * size_x + indi[1]].append(i)
+                        except Exception as e:
+                            print(indi)
+                time_step += 100.0
+            return data_spike
+        else:
+            return []
+
+    def get_random_datastream_spiking_brian2(
+        self, clip_and_normalize=True, size_x=64, encoding_type="rate"
+    ):
+        data_spike = []
+        data_spike_index = []
+        time_bw_frames = 100.0  # miliseconds
+        data = self.get_random_datastream(resize=(size_x, size_x))
+        if encoding_type == "rate":
+            time_step = 0.0
+            for datum in data:
+                for i in np.linspace(time_step, time_step + 100.0 - 1, 100):
+                    if i - time_step == 0:
+                        continue
+                    indices = np.argwhere(
+                        (i - time_step) % (1 / (datum + 0.0000001)) < 1
+                    )
+                    for indi in indices:
+                        try:
+                            data_spike.append(i)
+                            data_spike_index.append(int(indi[0] * size_x + indi[1]))
+                        except Exception as e:
+                            print(indi)
+                time_step += 100.0
+            return data_spike, data_spike_index
+        else:
+            return data_spike, data_spike_index

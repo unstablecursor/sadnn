@@ -6,15 +6,17 @@ import matplotlib.pyplot as plt
 
 # TODO: Training by genetic algorithm generating these values?
 TAU = 0.95  # TODO: I don't know whether this is important
-INTENSITY = 0.3  # TODO : Check this
-CUTOFF_DIST = 10  # TODO : Change this
-SIGMA = 0.24  # TODO: Check this
+INTENSITY_EXC = 1.0  # TODO : Check this
+INTENSITY_INH = 1.0
+CUTOFF_DIST = 20  # TODO : Change this
+SIGMA_EXC = 1.0  # TODO: Check this
+SIGMA_INH = 5.0
 SHIFT = 0.05  # TODO : Check this
 BETA = 1.0
 K_INHIB = 1.0
 X_EYE = 1.0
 Y_EYE = 1.0
-
+MIN_CLIP = -1.0
 
 class AttractorLayer:
     def __init__(
@@ -22,15 +24,18 @@ class AttractorLayer:
         n_x=64,
         n_y=64,
         tau=TAU,
-        intensity=INTENSITY,
+        intensity_exc=INTENSITY_EXC,
+        intensity_inh=INTENSITY_INH,
         cutoff_dist=CUTOFF_DIST,
-        sigma=SIGMA,
+        sigma_exc=SIGMA_EXC,
+        sigma_inh=SIGMA_INH,
         shift=SHIFT,
         beta=BETA,
         k=K_INHIB,
         x_eye=X_EYE,
         y_eye=Y_EYE,
         clip=False,
+        min_clip=MIN_CLIP
     ):
         self.n_x = n_x  # X length of the grid points
         self.n_y = n_y  # Y length of the grid points
@@ -41,15 +46,18 @@ class AttractorLayer:
             (self.n_x * self.n_y, self.n_x * self.n_y)
         )
         self.tau = tau
-        self.intensity = intensity
+        self.intensity_exc = intensity_exc
+        self.intensity_inh = intensity_inh
         self.cutoff_dist = cutoff_dist
-        self.sigma = sigma
+        self.sigma_exc = sigma_exc
+        self.sigma_inh = sigma_inh
         self.shift = shift
         self.clip = clip
         self.beta = beta
         self.k = k
         self.x_eye = x_eye
         self.y_eye = y_eye
+        self.min_clip = min_clip
 
     def visualize_neuron_activities(self, neurons=None):
         # Visualize cell_dists
@@ -69,14 +77,16 @@ class AttractorLayer:
         :param i: Neuron index
         :return: overall transfer from other neurons
         """
-        return np.sum(self.neuron_activities * self.inter_neuron_connections[i])
+        positive_act = self.neuron_activities
+        positive_act[positive_act < 0] = 0.0
+        return np.sum(positive_act * self.inter_neuron_connections[i])
 
     def update_potential(self, i, v_ext):
         """
         Updates neuron activity of neuron i
         :param i: Neuron index
         """
-        tf_result = self.beta * self.transfer_function(i)
+        tf_result = self.transfer_function(i)
         self.new_neuron_potentials[i] = tf_result + v_ext + self.neuron_activities[i]
         # if self.clip:
         #     self.new_neuron_potentials[i] = tf_result + v_ext
@@ -92,9 +102,9 @@ class AttractorLayer:
         for i in range(0, self.n_x * self.n_y):
             self.update_potential(i, external_input[i])
         if self.clip:
-            self.new_neuron_potentials.clip(0)
-        sqrd_potentials = self.new_neuron_potentials * self.new_neuron_potentials
-        self.neuron_activities = sqrd_potentials / (self.k * np.sum(sqrd_potentials))
+            self.new_neuron_potentials.clip(self.min_clip)
+        #sqrd_potentials = self.new_neuron_potentials * self.new_neuron_potentials
+        self.neuron_activities = self.new_neuron_potentials # sqrd_potentials / (self.k * np.sum(sqrd_potentials))
 
     def get_distance_bw_neurons(self, i, j):
         """
@@ -118,8 +128,10 @@ class AttractorLayer:
             dist = self.get_distance_bw_neurons(i, j)
             if dist < self.cutoff_dist:
                 self.inter_neuron_connections[i][j] = (
-                    self.intensity * np.exp(-(dist ** 2) / (self.sigma ** 2))
-                ) / (math.pi * 2 * (self.sigma ** 2))
+                    self.intensity_exc * np.exp(-(dist ** 2) / (2 * self.sigma_inh ** 2))
+                ) / (math.pi * 2 * (self.sigma_inh ** 2)) - (
+                    self.intensity_inh * np.exp(-(dist ** 2) / (2 * self.sigma_inh ** 2))
+                ) / (math.pi * 2 * (self.sigma_inh ** 2))
             else:
                 self.inter_neuron_connections[i][j] = 0
         else:
