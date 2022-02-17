@@ -1,0 +1,158 @@
+import math
+
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+# TODO: Training by genetic algorithm generating these values?
+TAU = 0.95  # TODO: I don't know whether this is important
+INTENSITY_EXC = 1.0  # TODO : Check this
+INTENSITY_INH = 1.0
+CUTOFF_DIST = 20  # TODO : Change this
+SIGMA_EXC = 1.0  # TODO: Check this
+SIGMA_INH = 5.0
+
+MIN_CLIP = -1.0
+
+class AttractorLayer:
+    def __init__(
+        self,
+        n_x=64,
+        n_y=64,
+        tau=TAU,
+        intensity_exc=INTENSITY_EXC,
+        intensity_inh=INTENSITY_INH,
+        cutoff_dist=CUTOFF_DIST,
+        sigma_exc=SIGMA_EXC,
+        sigma_inh=SIGMA_INH,
+        clip=True,
+        min_clip=MIN_CLIP
+    ):
+        self.n_x = n_x  # X length of the grid points
+        self.n_y = n_y  # Y length of the grid points
+        self.neuron_activities = np.zeros(self.n_x * self.n_y)
+        self.new_neuron_potentials = np.zeros(self.n_x * self.n_y)
+        self.new_neuron_activities = np.zeros(self.n_x * self.n_y)
+        self.inter_neuron_connections = np.zeros(
+            (self.n_x * self.n_y, self.n_x * self.n_y)
+        )
+        self.tau = tau
+        self.intensity_exc = intensity_exc
+        self.intensity_inh = intensity_inh
+        self.cutoff_dist = cutoff_dist
+        self.sigma_exc = sigma_exc
+        self.sigma_inh = sigma_inh
+        self.clip = clip
+        self.min_clip = min_clip
+
+    def visualize_neuron_activities(self, neurons=None):
+        # Visualize cell_dists
+        if neurons:
+            neuron_activities_2d = np.reshape(neurons, (-1, self.n_y))
+        else:
+            neuron_activities_2d = np.reshape(self.neuron_activities, (-1, self.n_y))
+        fig, ax = plt.subplots()
+
+        cell_dists_map = ax.imshow(neuron_activities_2d)
+        fig.colorbar(cell_dists_map)
+        plt.show()
+
+    def transfer_function(self, i):
+        """
+        Computes total excitation from other neurons
+        :param i: Neuron index
+        :return: overall transfer from other neurons
+        """
+        positive_act = self.neuron_activities
+        positive_act[positive_act < 0] = 0.0
+        return np.sum(positive_act * self.inter_neuron_connections[i])
+
+    def update_potential(self, i, v_ext):
+        """
+        Updates neuron activity of neuron i
+        :param i: Neuron index
+        """
+        tf_result = self.transfer_function(i)
+        self.new_neuron_potentials[i] = tf_result + v_ext + self.neuron_activities[i] - self.tau
+        # if self.clip:
+        #     self.new_neuron_potentials[i] = tf_result + v_ext
+        #     if self.new_neuron_potentials[i] < 0:
+        #         self.new_neuron_potentials[i] = 0
+        # else:
+        #
+        # self.new_neuron_activities[i] = tf_result * (
+        #     1 - self.tau
+        # ) + self.tau * tf_result / np.sum(self.neuron_activities)
+
+    def update_activities(self, external_input):
+        for i in range(0, self.n_x * self.n_y):
+            self.update_potential(i, external_input[i])
+        if self.clip:
+            self.new_neuron_potentials.clip(self.min_clip)
+        sqrd_potentials = self.new_neuron_potentials * self.new_neuron_potentials
+        self.neuron_activities = sqrd_potentials / ( np.sum(sqrd_potentials))
+
+    def get_distance_bw_neurons(self, i, j):
+        """
+        Get distance between two neurons
+        :param i: Neuron index of first neuron
+        :param j: Neuron index of second neuron
+        :return: Distance between two neurons
+        """
+        return np.sqrt(
+            (i // self.n_x - j // self.n_x) ** 2
+            + (i % self.n_x - j % self.n_x) ** 2
+        )
+
+    def set_weight(self, i, j):
+        """
+        Set weight between neurons
+        :param i: Index of first neuron
+        :param j: Index of second neuron
+        """
+        if i != j:
+            dist = self.get_distance_bw_neurons(i, j)
+            if dist < self.cutoff_dist:
+                self.inter_neuron_connections[i][j] = (
+                    self.intensity_exc * np.exp(-(dist ** 2) / (2 * self.sigma_exc ** 2))
+                ) / (math.pi * 2 * (self.sigma_exc ** 2)) - (
+                    self.intensity_inh * np.exp(-(dist ** 2) / (2 * self.sigma_inh ** 2))
+                ) / (math.pi * 2 * (self.sigma_inh ** 2))
+            else:
+                self.inter_neuron_connections[i][j] = 0
+        else:
+            self.inter_neuron_connections[i][j] = 0
+
+    def set_weights(self):
+        # TODO: This function sucks. Please make this more eloquent
+        for i in range(0, self.n_x * self.n_y):
+            for j in range(0, self.n_x * self.n_y):
+                self.set_weight(i, j)
+
+    def forward_pass(self, data_entry: np.ndarray, number_of_passes=1):
+        self.neuron_activities = data_entry / np.max(data_entry)  # TODO: Check this
+        for i in range(0, number_of_passes):
+            self.update_activities(data_entry)
+
+    def forward_pass_visualization(self, data_entry: np.ndarray, number_of_passes=1):
+        data = []
+        self.update_activities(data_entry)
+        data.append(np.reshape(self.neuron_activities, (-1, self.n_y)).copy())
+        for i in range(0, number_of_passes - 1):
+            self.update_activities(np.zeros((self.n_x * self.n_y)))
+            data.append(np.reshape(self.neuron_activities, (-1, self.n_y)).copy())
+        return data
+
+    def process_data(self, data_stream: [np.ndarray]):
+        # TODO: Implement this after testing in notebook
+        pass
+
+    def process_data_visalization(self, data_stream: [np.ndarray]):
+        # TODO: Implement this after testing in notebook
+        pass
+
+    def load_network(self, file_path):
+        self.inter_neuron_connections = np.load(file_path)
+
+    def save_network(self, file_path):
+        np.save(file_path, self.inter_neuron_connections)
